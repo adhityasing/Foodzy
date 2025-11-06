@@ -32,18 +32,23 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Foodzy API is running' });
 });
 
-// Initialize database connection
-createConnection()
-  .then(() => {
-    console.log('Database connected successfully');
-    app.listen(PORT, () => {
-      console.log(`Server is running on port ${PORT}`);
+// Initialize database connection (non-blocking for serverless)
+// This will be handled by the api/index.ts handler for Vercel
+// For local development, we'll start the server after DB connection
+if (process.env.VERCEL !== '1') {
+  // Local development: wait for database before starting server
+  createConnection()
+    .then(() => {
+      console.log('Database connected successfully');
+      app.listen(PORT, () => {
+        console.log(`Server is running on port ${PORT}`);
+      });
+    })
+    .catch((error) => {
+      console.error('Database connection failed:', error);
+      process.exit(1);
     });
-  })
-  .catch((error) => {
-    console.error('Database connection failed:', error);
-    process.exit(1);
-  });
+}
 
 export default app;
 
