@@ -3,7 +3,10 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-const dbConfig = {
+// Determine if we're using an external database (not localhost)
+const isExternalDB = process.env.DB_HOST && process.env.DB_HOST !== 'localhost' && !process.env.DB_HOST.includes('127.0.0.1');
+
+const dbConfig: any = {
   host: process.env.DB_HOST || 'localhost',
   port: parseInt(process.env.DB_PORT || '3306'),
   user: process.env.DB_USERNAME || 'root',
@@ -14,38 +17,67 @@ const dbConfig = {
   queueLimit: 0,
 };
 
-let pool: mysql.Pool;
+// Add SSL support for external databases (cloud services often require SSL)
+if (isExternalDB && process.env.DB_SSL !== 'false') {
+  dbConfig.ssl = process.env.DB_SSL === 'true' ? {} : {
+    rejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTHORIZED !== 'false'
+  };
+}
+
+let pool: mysql.Pool | null = null;
 
 export const createConnection = async (): Promise<void> => {
+  // Only connect to database in local development (not in production/Vercel)
+  if (process.env.NODE_ENV === 'production' || process.env.VERCEL === '1') {
+    console.log('Skipping database connection in production (database not deployed)');
+    return;
+  }
+
   try {
-    // First, connect without database to create it if it doesn't exist
-    const connection = await mysql.createConnection({
-      host: dbConfig.host,
-      port: dbConfig.port,
-      user: dbConfig.user,
-      password: dbConfig.password,
-    });
+    // Only create database if it's a local database (not external)
+    if (!isExternalDB) {
+      // For local development: create database if it doesn't exist
+      try {
+        const connection = await mysql.createConnection({
+          host: dbConfig.host,
+          port: dbConfig.port,
+          user: dbConfig.user,
+          password: dbConfig.password,
+        });
 
-    await connection.query(`CREATE DATABASE IF NOT EXISTS \`${dbConfig.database}\``);
-    await connection.end();
+        await connection.query(`CREATE DATABASE IF NOT EXISTS \`${dbConfig.database}\``);
+        await connection.end();
+        console.log('Database created or already exists (local mode)');
+      } catch (dbCreateError) {
+        console.warn('Could not create database (may already exist or insufficient permissions):', dbCreateError);
+        // Continue anyway - the database might already exist
+      }
+    }
 
-    // Create connection pool with database
+    // Create connection pool with database (for both local and external)
     pool = mysql.createPool(dbConfig);
 
     // Test connection
     const testConnection = await pool.getConnection();
     await testConnection.ping();
     testConnection.release();
+    console.log(`Connected to database: ${dbConfig.database} on ${dbConfig.host}`);
 
-    // Initialize tables
+    // Initialize tables (will create tables if they don't exist)
     await initializeTables();
   } catch (error) {
     console.error('Database connection error:', error);
-    throw error;
+    // Don't throw in production - allow app to run without database
+    if (process.env.NODE_ENV !== 'production' && process.env.VERCEL !== '1') {
+      throw error;
+    }
   }
 };
 
 const initializeTables = async (): Promise<void> => {
+  if (!pool) {
+    throw new Error('Database pool not initialized');
+  }
   try {
     // Users table
     await pool.query(`
@@ -429,12 +461,14 @@ const insertSampleProducts = async (): Promise<void> => {
   }
 };
 
-export const getPool = (): mysql.Pool => {
-  if (!pool) {
-    throw new Error('Database connection not initialized');
-  }
+export const getPool = (): mysql.Pool | null => {
+  // Return null if database is not available (production mode)
   return pool;
 };
 
-export default pool!;
+export const isDatabaseAvailable = (): boolean => {
+  return pool !== null;
+};
+
+export default pool;
 
