@@ -1,16 +1,9 @@
 import { Request, Response } from 'express';
-import { getPool, isDatabaseAvailable } from '../config/database';
+import { getPool } from '../config/database';
 
 export const getAllProducts = async (req: Request, res: Response): Promise<void> => {
   try {
     const pool = getPool();
-    if (!pool || !isDatabaseAvailable()) {
-      res.status(503).json({ 
-        message: 'Database not available in production mode. This feature requires database for local development.',
-        products: []
-      });
-      return;
-    }
     const [products] = await pool.query('SELECT * FROM products ORDER BY created_at DESC');
     
     const formattedProducts = (products as any[]).map((product) => ({
@@ -44,12 +37,6 @@ export const getProductById = async (req: Request, res: Response): Promise<void>
   try {
     const { id } = req.params;
     const pool = getPool();
-    if (!pool || !isDatabaseAvailable()) {
-      res.status(503).json({ 
-        message: 'Database not available in production mode. This feature requires database for local development.'
-      });
-      return;
-    }
 
     const [products] = await pool.query('SELECT * FROM products WHERE id = ?', [id]);
     const productList = products as any[];
@@ -89,13 +76,6 @@ export const getProductsByCategory = async (req: Request, res: Response): Promis
   try {
     const { category } = req.params;
     const pool = getPool();
-    if (!pool || !isDatabaseAvailable()) {
-      res.status(503).json({ 
-        message: 'Database not available in production mode. This feature requires database for local development.',
-        products: []
-      });
-      return;
-    }
 
     const [products] = await pool.query(
       'SELECT * FROM products WHERE category = ? ORDER BY created_at DESC',

@@ -24,15 +24,9 @@ if (isExternalDB && process.env.DB_SSL !== 'false') {
   };
 }
 
-let pool: mysql.Pool | null = null;
+let pool: mysql.Pool;
 
 export const createConnection = async (): Promise<void> => {
-  // Only connect to database in local development (not in production/Vercel)
-  if (process.env.NODE_ENV === 'production' || process.env.VERCEL === '1') {
-    console.log('Skipping database connection in production (database not deployed)');
-    return;
-  }
-
   try {
     // Only create database if it's a local database (not external)
     if (!isExternalDB) {
@@ -67,17 +61,11 @@ export const createConnection = async (): Promise<void> => {
     await initializeTables();
   } catch (error) {
     console.error('Database connection error:', error);
-    // Don't throw in production - allow app to run without database
-    if (process.env.NODE_ENV !== 'production' && process.env.VERCEL !== '1') {
-      throw error;
-    }
+    throw error;
   }
 };
 
 const initializeTables = async (): Promise<void> => {
-  if (!pool) {
-    throw new Error('Database pool not initialized');
-  }
   try {
     // Users table
     await pool.query(`
@@ -461,14 +449,12 @@ const insertSampleProducts = async (): Promise<void> => {
   }
 };
 
-export const getPool = (): mysql.Pool | null => {
-  // Return null if database is not available (production mode)
+export const getPool = (): mysql.Pool => {
+  if (!pool) {
+    throw new Error('Database connection not initialized');
+  }
   return pool;
 };
 
-export const isDatabaseAvailable = (): boolean => {
-  return pool !== null;
-};
-
-export default pool;
+export default pool!;
 

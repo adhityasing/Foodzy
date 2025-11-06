@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { getPool, isDatabaseAvailable } from '../config/database';
+import { getPool } from '../config/database';
 import { generateOTP, sendEmail } from '../services/email.service';
 import { randomUUID } from 'crypto';
 import jwt from 'jsonwebtoken';
@@ -8,12 +8,6 @@ export const sendOTP = async (req: Request, res: Response): Promise<void> => {
   try {
     const { email } = req.body;
     const pool = getPool();
-    if (!pool || !isDatabaseAvailable()) {
-      res.status(503).json({ 
-        message: 'Database not available in production mode. This feature requires database for local development.'
-      });
-      return;
-    }
 
     // Generate 6-digit OTP
     const otp = generateOTP();
@@ -47,12 +41,6 @@ export const verifyOTP = async (req: Request, res: Response): Promise<void> => {
   try {
     const { email, otp } = req.body;
     const pool = getPool();
-    if (!pool || !isDatabaseAvailable()) {
-      res.status(503).json({ 
-        message: 'Database not available in production mode. This feature requires database for local development.'
-      });
-      return;
-    }
 
     // Find valid OTP
     const [otps] = await pool.query(

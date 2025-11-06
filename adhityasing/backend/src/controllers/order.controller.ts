@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { getPool, isDatabaseAvailable } from '../config/database';
+import { getPool } from '../config/database';
 import { randomUUID } from 'crypto';
 import { sendOrderConfirmationEmail } from '../services/email.service';
 import jwt from 'jsonwebtoken';
@@ -21,12 +21,6 @@ export const createOrder = async (req: Request, res: Response): Promise<void> =>
   try {
     const { items, deliveryMethod, paymentMethod, billingAddress } = req.body;
     const pool = getPool();
-    if (!pool || !isDatabaseAvailable()) {
-      res.status(503).json({ 
-        message: 'Database not available in production mode. This feature requires database for local development.'
-      });
-      return;
-    }
 
     // Calculate totals
     const subtotal = items.reduce(
@@ -159,12 +153,6 @@ export const getOrderById = async (req: Request, res: Response): Promise<void> =
   try {
     const { id } = req.params;
     const pool = getPool();
-    if (!pool || !isDatabaseAvailable()) {
-      res.status(503).json({ 
-        message: 'Database not available in production mode. This feature requires database for local development.'
-      });
-      return;
-    }
 
     const [orders] = await pool.query('SELECT * FROM orders WHERE id = ?', [id]);
     const orderList = orders as any[];

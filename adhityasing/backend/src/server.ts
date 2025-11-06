@@ -32,9 +32,10 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Foodzy API is running' });
 });
 
-// Initialize database connection (only for local development)
-// In production/Vercel, database is not used
-if (process.env.VERCEL !== '1' && process.env.NODE_ENV !== 'production') {
+// Initialize database connection
+// This will be handled by the api/index.ts handler for Vercel
+// For local development, we'll start the server after DB connection
+if (process.env.VERCEL !== '1') {
   // Local development: wait for database before starting server
   createConnection()
     .then(() => {
@@ -47,10 +48,6 @@ if (process.env.VERCEL !== '1' && process.env.NODE_ENV !== 'production') {
       console.error('Database connection failed:', error);
       process.exit(1);
     });
-} else {
-  // Production/Vercel: Don't start server here (Vercel handles it)
-  // Database connection is skipped automatically in createConnection()
-  console.log('Running in production mode - database disabled, serverless function ready');
 }
 
 export default app;
