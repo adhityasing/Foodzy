@@ -14,7 +14,7 @@ const PORT = process.env.PORT || 3001;
 // Middleware
 app.use(cors({
   origin: [
-    'https://foodzy-o9fxrw8xb-adhityasings-projects.vercel.app/',
+    'https://foodzy-64ks3utg1-adhityasings-projects.vercel.app/',
     'http://localhost:5173'  // Keep for local development
   ],
   credentials: true
